@@ -72,9 +72,12 @@ exports.schedule = async (req, res) => {
         });
 
         // Schedule the job in memory
-        schedule.scheduleJob(scheduledTime, function() {
+        // Schedule the job in memory
+        schedule.scheduleJob(String(task.id), scheduledTime, function() {
             executeTask(task.id);
         });
+
+        res.redirect(`/repo/${id}/schedule?message=Task+Scheduled`);
 
         res.redirect(`/repo/${id}/schedule?message=Task+Scheduled`);
     } catch (error) {
@@ -102,9 +105,12 @@ exports.scheduleSingleTag = async (req, res) => {
             scheduledTime
         });
 
-        schedule.scheduleJob(scheduledTime, function() {
+        // Schedule the job in memory
+        schedule.scheduleJob(String(task.id), scheduledTime, function() {
             executeTask(task.id);
         });
+
+        res.redirect(`/repo/${id}/schedule?message=Task+Scheduled`);
 
         res.redirect(`/repo/${id}?message=Push+for+tag+${tagName}+scheduled`);
     } catch (error) {
@@ -131,9 +137,12 @@ exports.scheduleCommit = async (req, res) => {
             scheduledTime
         });
 
-        schedule.scheduleJob(scheduledTime, function() {
+        // Schedule the job in memory
+        schedule.scheduleJob(String(task.id), scheduledTime, function() {
             executeTask(task.id);
         });
+
+        res.redirect(`/repo/${id}/schedule?message=Task+Scheduled`);
 
         res.redirect(`/repo/${id}?message=Push+for+commit+${commitHash.substring(0,7)}+scheduled`);
     } catch (error) {
@@ -158,9 +167,39 @@ exports.loadPendingTasks = async () => {
             console.log(`Executing missed task ${task.id}...`);
             executeTask(task.id);
         } else {
-            schedule.scheduleJob(task.scheduledTime, function() {
+            // Use task ID as the job name for cancellation purposes
+            schedule.scheduleJob(String(task.id), task.scheduledTime, function() {
                 executeTask(task.id);
             });
         }
     });
+};
+
+exports.cancel = async (req, res) => {
+    const { id, taskId } = req.params;
+    try {
+        const task = await ScheduledTask.findOne({ where: { id: taskId, repoId: id } });
+        
+        if (!task) {
+             return res.redirect(`/repo/${id}/schedule?error=Task+not+found`);
+        }
+
+        if (task.status !== 'pending') {
+            return res.redirect(`/repo/${id}/schedule?error=Only+pending+tasks+can+be+cancelled`);
+        }
+
+        // Cancel the job in node-schedule
+        const currentJob = schedule.scheduledJobs[String(taskId)];
+        if (currentJob) {
+            currentJob.cancel();
+        }
+
+        // Remove from DB
+        await task.destroy();
+
+        res.redirect(`/repo/${id}/schedule?message=Task+Cancelled`);
+    } catch (error) {
+        console.error(error);
+        res.redirect(`/repo/${id}/schedule?error=Cancellation+Failed:+${encodeURIComponent(error.message)}`);
+    }
 };

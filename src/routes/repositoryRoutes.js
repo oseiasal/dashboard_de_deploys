@@ -21,6 +21,7 @@ router.post('/repo/:id/pull-tags', repositoryController.pullTags);
 // Scheduler Routes
 router.get('/repo/:id/schedule', scheduleController.form);
 router.post('/repo/:id/schedule', scheduleController.schedule);
+router.delete('/repo/:id/schedule/:taskId', scheduleController.cancel);
 router.post('/repo/:id/tag/:tagName/schedule', scheduleController.scheduleSingleTag);
 router.post('/repo/:id/commit/:commitHash/schedule', scheduleController.scheduleCommit);
 

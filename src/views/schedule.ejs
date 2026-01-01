@@ -47,6 +47,7 @@
                             <th>Scheduled For</th>
                             <th>Status</th>
                             <th>Result</th>
+                            <th>Action</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -70,6 +71,13 @@
                                     <% } %>
                                 </td>
                                 <td><small class="text-muted"><%= task.log || '-' %></small></td>
+                                <td>
+                                    <% if(task.status === 'pending') { %>
+                                        <form action="/repo/<%= repo.id %>/schedule/<%= task.id %>?_method=DELETE" method="POST" onsubmit="return confirm('Are you sure you want to cancel this task?');">
+                                            <button type="submit" class="btn btn-danger btn-sm">Cancel</button>
+                                        </form>
+                                    <% } %>
+                                </td>
                             </tr>
                         <% }) %>
                     </tbody>
