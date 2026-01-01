@@ -1,8 +1,13 @@
 const { Repository, ScheduledTask } = require('../models');
-const GitService = require('./gitService');
+// const GitService = require('./gitService'); // Removed: Injected via Factory
+const defaultGitServiceFactory = require('./GitServiceFactory');
 const fs = require('fs');
 
 class RepositoryAppService {
+
+    constructor(gitServiceFactory = defaultGitServiceFactory) {
+        this.gitServiceFactory = gitServiceFactory;
+    }
     
     async getAllRepositories() {
         // Fetch repos including their scheduled tasks
@@ -13,7 +18,7 @@ class RepositoryAppService {
         // Enhance repos with Git data (Last Commit Date) in parallel
         const repositories = await Promise.all(dbRepos.map(async (repoInstance) => {
             const repo = repoInstance.toJSON(); // Convert to plain object
-            const gitService = new GitService(repo.path);
+            const gitService = this.gitServiceFactory.create(repo.path);
             
             try {
                 // Get last commit info
@@ -39,13 +44,19 @@ class RepositoryAppService {
     }
 
     async createRepository({ name, path: repoPath, method, url }) {
+        // Note: GitService.clone is static, so we might keep it or wrap it in factory too. 
+        // For strict DIP, the factory should handle it, but for now we focus on instance methods.
+        // However, checking isRepo requires an instance.
+        
+        const GitService = require('./gitService'); // Still needed for static .clone unless moved to factory
+
         if (method === 'clone') {
             if (fs.existsSync(repoPath)) {
                 throw new Error('Destination path already exists. Please choose a new folder.');
             }
             await GitService.clone(url, repoPath);
         } else {
-            const gitService = new GitService(repoPath);
+            const gitService = this.gitServiceFactory.create(repoPath);
             const isRepo = await gitService.checkIsRepo();
             
             if (!isRepo) {
@@ -66,10 +77,10 @@ class RepositoryAppService {
         const repo = await Repository.findByPk(id);
         if (!repo) throw new Error('Repository not found');
 
-        const gitService = new GitService(repo.path);
+        const gitService = this.gitServiceFactory.create(repo.path);
         
         // Parallel execution for speed
-        const [status, log, tags, scheduledTasks, branches, remoteRefs, unpushedLog] = await Promise.all([
+        const [status, log, tags, scheduledTasks, branches, remoteTags, unpushedHashes] = await Promise.all([
             gitService.getStatus(),
             gitService.getLog(limit),
             gitService.getTags(),
@@ -78,19 +89,9 @@ class RepositoryAppService {
                 order: [['scheduledTime', 'ASC']]
             }),
             gitService.getLocalBranches(),
-            gitService.getRemoteRefs(['--tags', 'origin']),
-            gitService.getUnpushedCommits() 
+            gitService.getRemoteTags(),
+            gitService.getUnpushedHashes() 
         ]);
-
-        const unpushedHashes = new Set(unpushedLog.all.map(c => c.hash));
-
-        // Parse remote tags
-        const remoteTags = remoteRefs.split('\n')
-            .map(line => {
-                const parts = line.split('refs/tags/');
-                return parts.length > 1 ? parts[1].trim() : null;
-            })
-            .filter(Boolean);
 
         // Process Tags
         let allTags = tags.all.slice().reverse();
@@ -115,7 +116,7 @@ class RepositoryAppService {
         const repo = await Repository.findByPk(id);
         if (!repo) throw new Error('Repository not found');
         
-        const gitService = new GitService(repo.path);
+        const gitService = this.gitServiceFactory.create(repo.path);
         await gitService.checkout(branchName);
         return repo;
     }
@@ -124,7 +125,7 @@ class RepositoryAppService {
         const repo = await Repository.findByPk(id);
         if (!repo) throw new Error('Repository not found');
 
-        const gitService = new GitService(repo.path);
+        const gitService = this.gitServiceFactory.create(repo.path);
 
         if (files === 'all') {
             await gitService.add('.');
@@ -140,7 +141,7 @@ class RepositoryAppService {
         const repo = await Repository.findByPk(id);
         if (!repo) throw new Error('Repository not found');
         
-        const gitService = new GitService(repo.path);
+        const gitService = this.gitServiceFactory.create(repo.path);
         await gitService.push();
         return repo;
     }
@@ -149,7 +150,7 @@ class RepositoryAppService {
         const repo = await Repository.findByPk(id);
         if (!repo) throw new Error('Repository not found');
         
-        const gitService = new GitService(repo.path);
+        const gitService = this.gitServiceFactory.create(repo.path);
         await gitService.pull();
         return repo;
     }
@@ -158,7 +159,7 @@ class RepositoryAppService {
         const repo = await Repository.findByPk(id);
         if (!repo) throw new Error('Repository not found');
         
-        const gitService = new GitService(repo.path);
+        const gitService = this.gitServiceFactory.create(repo.path);
         await gitService.pull(['--tags']);
         return repo;
     }
@@ -167,7 +168,7 @@ class RepositoryAppService {
         const repo = await Repository.findByPk(id);
         if (!repo) throw new Error('Repository not found');
         
-        const gitService = new GitService(repo.path);
+        const gitService = this.gitServiceFactory.create(repo.path);
         await gitService.pushTags();
         return repo;
     }
@@ -176,7 +177,7 @@ class RepositoryAppService {
         const repo = await Repository.findByPk(id);
         if (!repo) throw new Error('Repository not found');
         
-        const gitService = new GitService(repo.path);
+        const gitService = this.gitServiceFactory.create(repo.path);
         await gitService.createTag(tagName, message, commitHash);
         return repo;
     }
@@ -185,7 +186,7 @@ class RepositoryAppService {
         const repo = await Repository.findByPk(id);
         if (!repo) throw new Error('Repository not found');
         
-        const gitService = new GitService(repo.path);
+        const gitService = this.gitServiceFactory.create(repo.path);
         await gitService.deleteTag(tagName);
         return repo;
     }

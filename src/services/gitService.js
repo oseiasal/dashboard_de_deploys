@@ -30,12 +30,27 @@ class GitService {
         }
     }
 
+    async getRemoteTags(remote = 'origin') {
+        const rawRefs = await this.getRemoteRefs(['--tags', remote]);
+        return rawRefs.split('\n')
+            .map(line => {
+                const parts = line.split('refs/tags/');
+                return parts.length > 1 ? parts[1].trim() : null;
+            })
+            .filter(Boolean);
+    }
+
     async getUnpushedCommits() {
         try {
             return await this.git.log(['--not', '--remotes']);
         } catch (error) {
             return { all: [] };
         }
+    }
+
+    async getUnpushedHashes() {
+        const log = await this.getUnpushedCommits();
+        return new Set(log.all.map(c => c.hash));
     }
 
     async checkIsRepo() {

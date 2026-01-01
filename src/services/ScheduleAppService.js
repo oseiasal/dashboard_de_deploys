@@ -1,16 +1,21 @@
 const { Repository, ScheduledTask } = require('../models');
-const GitService = require('./gitService');
+// const GitService = require('./gitService'); // Injected
+const defaultGitServiceFactory = require('./GitServiceFactory');
 const schedule = require('node-schedule');
 const TaskStrategyFactory = require('../strategies/TaskStrategyFactory');
 
 class ScheduleAppService {
     
+    constructor(gitServiceFactory = defaultGitServiceFactory) {
+        this.gitServiceFactory = gitServiceFactory;
+    }
+
     async executeTask(taskId) {
         const task = await ScheduledTask.findByPk(taskId, { include: Repository });
         if (!task || task.status !== 'pending') return;
 
         try {
-            const gitService = new GitService(task.repository.path);
+            const gitService = this.gitServiceFactory.create(task.repository.path);
             
             const strategy = TaskStrategyFactory.getStrategy(task.type);
             await strategy.execute(gitService, task);
