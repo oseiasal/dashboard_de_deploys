@@ -1,0 +1,309 @@
+<%- include('partials/header') %>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h2 class="mb-0"><%= repo.name %></h2>
+        <small class="text-muted"><%= repo.path %></small>
+    </div>
+    <div class="d-flex align-items-center gap-3">
+        <!-- Branch Switcher -->
+        <form action="/repo/<%= repo.id %>/checkout" method="POST" class="d-flex align-items-center">
+            <div class="input-group input-group-sm">
+                <span class="input-group-text"><i class="fas fa-code-branch"></i></span>
+                <select name="branch" class="form-select" onchange="this.form.submit()">
+                    <% branches.all.forEach(branch => { %>
+                        <option value="<%= branch %>" <%= branch === branches.current ? 'selected' : '' %>>
+                            <%= branch %>
+                        </option>
+                    <% }) %>
+                </select>
+                <button type="submit" class="btn btn-outline-primary d-none">Switch</button>
+            </div>
+        </form>
+
+        <a href="/" class="btn btn-outline-secondary btn-sm"><i class="fas fa-arrow-left"></i> Back</a>
+    </div>
+</div>
+
+<!-- Feedback Messages -->
+<script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const msg = urlParams.get('message');
+    const err = urlParams.get('error');
+    if(msg) document.write(`<div class="alert alert-success">${msg}</div>`);
+    if(err) document.write(`<div class="alert alert-danger">${err}</div>`);
+</script>
+
+<!-- Tabs Navigation -->
+<ul class="nav nav-tabs mb-4" id="repoTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+        <button class="nav-link active" id="workspace-tab" data-bs-toggle="tab" data-bs-target="#workspace" type="button" role="tab">
+            <i class="fas fa-laptop-code me-2"></i>Workspace
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="history-tab" data-bs-toggle="tab" data-bs-target="#history" type="button" role="tab">
+            <i class="fas fa-history me-2"></i>Commits History
+        </button>
+    </li>
+    <li class="nav-item" role="presentation">
+        <button class="nav-link" id="tags-tab" data-bs-toggle="tab" data-bs-target="#tags" type="button" role="tab">
+            <i class="fas fa-tags me-2"></i>Tags
+        </button>
+    </li>
+</ul>
+
+<div class="tab-content" id="repoTabsContent">
+    
+    <!-- TAB 1: WORKSPACE (Status, Commit, Sync) -->
+    <div class="tab-pane fade show active" id="workspace" role="tabpanel">
+        <div class="row">
+            <div class="col-md-7">
+                <div class="card mb-4">
+                    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Changes <span class="badge bg-secondary"><%= status.files.length %></span></h5>
+                        <span class="badge bg-info text-dark"><%= status.current %></span>
+                    </div>
+                    <div class="card-body">
+                        <% if (status.files.length === 0) { %>
+                            <div class="text-center py-5">
+                                <i class="fas fa-check-circle text-success fa-3x mb-3"></i>
+                                <p class="text-muted">Working directory is clean.</p>
+                            </div>
+                        <% } else { %>
+                            <form action="/repo/<%= repo.id %>/commit" method="POST">
+                                <div class="list-group mb-3" style="max-height: 400px; overflow-y: auto;">
+                                    <% status.files.forEach(file => { %>
+                                        <label class="list-group-item">
+                                            <input class="form-check-input me-1" type="checkbox" name="files" value="<%= file.path %>" checked>
+                                            <span class="badge bg-warning text-dark me-2"><%= file.working_dir %></span>
+                                            <%= file.path %>
+                                        </label>
+                                    <% }) %>
+                                </div>
+                                <div class="input-group">
+                                    <input type="text" name="message" class="form-control" placeholder="Commit message" required>
+                                    <button class="btn btn-success" type="submit">Commit Selected</button>
+                                </div>
+                            </form>
+                        <% } %>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-5">
+                <div class="card mb-4 border-primary">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">Sync Actions</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-2">
+                            <!-- Pull Commits -->
+                            <div class="col-6">
+                                <form action="/repo/<%= repo.id %>/pull" method="POST">
+                                    <button class="btn btn-info w-100 text-white" type="submit" title="Pull latest commits">
+                                        <i class="fas fa-cloud-download-alt me-2"></i> Pull
+                                    </button>
+                                </form>
+                            </div>
+                            <!-- Push Commits -->
+                            <div class="col-6">
+                                <form action="/repo/<%= repo.id %>/push" method="POST">
+                                    <button class="btn btn-primary w-100" type="submit" title="Push your commits">
+                                        <i class="fas fa-cloud-upload-alt me-2"></i> Push
+                                    </button>
+                                </form>
+                            </div>
+                            <!-- Pull Tags -->
+                            <div class="col-6">
+                                <form action="/repo/<%= repo.id %>/pull-tags" method="POST">
+                                    <button class="btn btn-outline-info w-100" type="submit" title="Fetch remote tags">
+                                        <i class="fas fa-tags me-2"></i> Pull Tags
+                                    </button>
+                                </form>
+                            </div>
+                            <!-- Push Tags -->
+                            <div class="col-6">
+                                <form action="/repo/<%= repo.id %>/push-tags" method="POST">
+                                    <button class="btn btn-outline-primary w-100" type="submit" title="Push local tags">
+                                        <i class="fas fa-tags me-2"></i> Push Tags
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="fas fa-clock me-2"></i>Scheduler</h5>
+                        <% if (scheduledTasks && scheduledTasks.length > 0) { %>
+                            <span class="badge bg-dark"><%= scheduledTasks.length %> pending</span>
+                        <% } %>
+                    </div>
+                    <div class="card-body">
+                        <% if (scheduledTasks && scheduledTasks.length > 0) { %>
+                            <div class="list-group list-group-flush mb-3 border rounded">
+                                <% scheduledTasks.forEach(task => { %>
+                                    <div class="list-group-item d-flex justify-content-between align-items-center bg-light">
+                                        <div>
+                                            <% if(task.type === 'push') { %>
+                                                <i class="fas fa-cloud-upload-alt text-primary me-2"></i>
+                                            <% } else { %>
+                                                <i class="fas fa-tags text-info me-2"></i>
+                                            <% } %>
+                                            <strong><%= task.type === 'push' ? 'Push' : 'Push Tags' %></strong>
+                                        </div>
+                                        <small class="text-muted"><%= new Date(task.scheduledTime).toLocaleString([], {month: 'short', day: 'numeric', hour: '2-digit', minute:'2-digit'}) %></small>
+                                    </div>
+                                <% }) %>
+                            </div>
+                        <% } else { %>
+                            <p class="small text-muted">No actions scheduled.</p>
+                        <% } %>
+                        <a href="/repo/<%= repo.id %>/schedule" class="btn btn-outline-warning text-dark btn-sm w-100">Manage Schedule</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 2: HISTORY (Log with Tags) -->
+    <div class="tab-pane fade" id="history" role="tabpanel">
+        <div class="card">
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                    <% log.all.forEach(commit => { 
+                        // Logic to parse refs for tags
+                        // Example refs: "tag: v1.0.0, master, origin/master"
+                        const commitTags = commit.refs ? commit.refs.split(',').filter(r => r.trim().startsWith('tag: ')).map(r => r.trim().replace('tag: ', '')) : [];
+                    %>
+                        <div class="list-group-item">
+                            <div class="d-flex w-100 justify-content-between align-items-start">
+                                <div style="flex: 1;">
+                                    <h5 class="mb-1">
+                                        <%= commit.message %>
+                                        <% commitTags.forEach(tag => { %>
+                                            <span class="badge bg-success ms-1"><i class="fas fa-tag me-1"></i><%= tag %></span>
+                                        <% }) %>
+                                    </h5>
+                                    <small class="text-muted">
+                                        <%= commit.author_name %> committed on <%= commit.date.substring(0, 10) %>
+                                    </small>
+                                </div>
+                                <div class="text-end ms-3">
+                                    <span class="font-monospace bg-light border px-2 rounded small"><%= commit.hash.substring(0, 7) %></span>
+                                    <div class="mt-2">
+                                        <button class="btn btn-outline-secondary btn-sm" 
+                                                onclick="openTagModal('<%= commit.hash %>', '<%= commit.message.replace(/'/g, "\'") %>')">
+                                            <i class="fas fa-plus"></i> Tag
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    <% }) %>
+                </div>
+            </div>
+            <div class="card-footer text-center">
+                <a href="?limit=<%= (limit || 10) + 10 %>" class="btn btn-link text-decoration-none">
+                    Load More Commits <i class="fas fa-chevron-down ms-1"></i>
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 3: TAGS (List & Delete) -->
+    <div class="tab-pane fade" id="tags" role="tabpanel">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Existing Tags</h5>
+                <button class="btn btn-success btn-sm" onclick="openTagModal('', 'HEAD')">
+                    <i class="fas fa-plus me-1"></i> Create New Tag
+                </button>
+            </div>
+            <div class="card-body">
+                <% if (tags.all.length === 0) { %>
+                    <div class="alert alert-info">No tags found in this repository.</div>
+                <% } else { %>
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Tag Name</th>
+                                    <th class="text-end">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <% tags.all.slice().reverse().forEach(tag => { %>
+                                    <tr>
+                                        <td>
+                                            <span class="badge bg-success fs-6"><%= tag %></span>
+                                        </td>
+                                        <td class="text-end">
+                                            <form action="/repo/<%= repo.id %>/tag/<%= tag %>?_method=DELETE" method="POST" class="d-inline">
+                                                <button type="submit" class="btn btn-outline-danger btn-sm" onclick="return confirm('Delete tag <%= tag %>? This cannot be undone.')">
+                                                    <i class="fas fa-trash-alt"></i> Delete
+                                                </button>
+                                            </form>
+                                        </td>
+                                    </tr>
+                                <% }) %>
+                            </tbody>
+                        </table>
+                    </div>
+                <% } %>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tag Modal (Shared) -->
+<div class="modal fade" id="tagModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Create Tag</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form action="/repo/<%= repo.id %>/tag" method="POST">
+                <div class="modal-body">
+                    <input type="hidden" name="commitHash" id="modalCommitHash">
+                    
+                    <div class="alert alert-secondary py-2 mb-3 small">
+                        Target: <strong id="modalCommitDisplay">HEAD</strong>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Tag Name</label>
+                        <div class="input-group">
+                            <span class="input-group-text">v</span>
+                            <input type="text" name="tagName" class="form-control" placeholder="1.0.0" required autofocus>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Message (Optional)</label>
+                        <textarea name="message" class="form-control" rows="2" placeholder="Version release notes..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create Tag</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function openTagModal(hash, message) {
+        document.getElementById('modalCommitHash').value = hash;
+        
+        const display = hash ? `${hash.substring(0, 7)}` : 'HEAD (Latest)';
+        document.getElementById('modalCommitDisplay').textContent = display;
+        
+        new bootstrap.Modal(document.getElementById('tagModal')).show();
+    }
+</script>
+
+<%- include('partials/footer') %>

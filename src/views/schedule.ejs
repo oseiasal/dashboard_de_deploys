@@ -1,0 +1,82 @@
+<%- include('partials/header') %>
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3>Schedule Actions for <span class="text-primary"><%= repo.name %></span></h3>
+            <a href="/repo/<%= repo.id %>" class="btn btn-outline-secondary btn-sm">Back to Dashboard</a>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0">New Schedule</h5>
+            </div>
+            <div class="card-body">
+                <% if (locals.error) { %>
+                    <div class="alert alert-danger"><%= error %></div>
+                <% } %>
+                
+                <form action="/repo/<%= repo.id %>/schedule" method="POST">
+                    <div class="mb-3">
+                        <label class="form-label">Action Type</label>
+                        <select name="type" class="form-select">
+                            <option value="push">Push Commits</option>
+                            <option value="push-tags">Push Tags</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Date & Time</label>
+                        <input type="datetime-local" name="datetime" class="form-control" required>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-success">Schedule Task</button>
+                </form>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">Scheduled Tasks History</h5>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-striped mb-0">
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>Scheduled For</th>
+                            <th>Status</th>
+                            <th>Result</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <% tasks.forEach(task => { %>
+                            <tr>
+                                <td>
+                                    <% if(task.type === 'push') { %>
+                                        <span class="badge bg-primary">Push</span>
+                                    <% } else { %>
+                                        <span class="badge bg-info text-dark">Push Tags</span>
+                                    <% } %>
+                                </td>
+                                <td><%= new Date(task.scheduledTime).toLocaleString() %></td>
+                                <td>
+                                    <% if(task.status === 'pending') { %>
+                                        <span class="badge bg-warning text-dark">Pending</span>
+                                    <% } else if(task.status === 'completed') { %>
+                                        <span class="badge bg-success">Success</span>
+                                    <% } else { %>
+                                        <span class="badge bg-danger">Failed</span>
+                                    <% } %>
+                                </td>
+                                <td><small class="text-muted"><%= task.log || '-' %></small></td>
+                            </tr>
+                        <% }) %>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<%- include('partials/footer') %>

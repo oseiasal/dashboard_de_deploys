@@ -1,0 +1,63 @@
+<%- include('partials/header') %>
+
+<div class="row">
+    <div class="col-12 mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h2 class="mb-0">Repositories</h2>
+            <small class="text-muted">Sorted by latest activity</small>
+        </div>
+
+        <% if (repositories.length === 0) { %>
+            <div class="alert alert-info">
+                No repositories managed yet. <a href="/add">Add one now</a>.
+            </div>
+        <% } else { %>
+            <div class="row">
+                <% repositories.forEach(repo => { %>
+                    <div class="col-md-6 col-lg-4 mb-4">
+                        <div class="card h-100 border-0 shadow-sm">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <h5 class="card-title text-truncate mb-0" style="max-width: 80%;" title="<%= repo.name %>">
+                                        <i class="fab fa-git-alt me-2 text-secondary"></i><%= repo.name %>
+                                    </h5>
+                                    <% if (repo.pendingTasksCount > 0) { %>
+                                        <span class="badge bg-warning text-dark" title="<%= repo.pendingTasksCount %> scheduled tasks">
+                                            <i class="fas fa-clock"></i> <%= repo.pendingTasksCount %>
+                                        </span>
+                                    <% } %>
+                                </div>
+                                
+                                <p class="card-text text-muted small text-truncate mb-3" title="<%= repo.path %>">
+                                    <%= repo.path %>
+                                </p>
+
+                                <div class="bg-light p-2 rounded mb-3">
+                                    <small class="d-block text-muted" style="font-size: 0.75rem;">Last Commit:</small>
+                                    <div class="text-truncate small fw-bold" title="<%= repo.lastCommitMsg %>">
+                                        <%= repo.lastCommitMsg %>
+                                    </div>
+                                    <small class="text-muted" style="font-size: 0.75rem;">
+                                        <%= repo.lastCommitDate.getTime() === 0 ? '-' : repo.lastCommitDate.toLocaleString() %>
+                                    </small>
+                                </div>
+
+                                <div class="d-flex justify-content-between align-items-center mt-auto">
+                                    <a href="/repo/<%= repo.id %>" class="btn btn-primary btn-sm px-3">Manage</a>
+                                    
+                                    <form action="/delete/<%= repo.id %>?_method=DELETE" method="POST" class="d-inline">
+                                        <button type="submit" class="btn btn-outline-danger btn-sm border-0" onclick="return confirm('Are you sure you want to remove this repository from the dashboard?')">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                <% }) %>
+            </div>
+        <% } %>
+    </div>
+</div>
+
+<%- include('partials/footer') %>
