@@ -1,0 +1,1 @@
+Projeto feito para substituir o github Desktop. Atualmente só funciona no windows. O fluxo de trabalho é completamente ajustado ao meu uso.
