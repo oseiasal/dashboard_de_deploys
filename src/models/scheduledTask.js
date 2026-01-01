@@ -13,8 +13,12 @@ const ScheduledTask = sequelize.define('scheduledTask', {
         allowNull: false
     },
     type: {
-        type: Sequelize.ENUM('push', 'push-tags'),
+        type: Sequelize.ENUM('push', 'push-tags', 'push-tag-single', 'push-commit'),
         allowNull: false
+    },
+    target: {
+        type: Sequelize.STRING, // stores specific tag name or branch
+        allowNull: true
     },
     scheduledTime: {
         type: Sequelize.DATE,

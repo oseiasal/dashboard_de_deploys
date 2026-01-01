@@ -31,9 +31,11 @@
                                 <label for="path-local" class="form-label">Local Path</label>
                                 <div class="input-group">
                                     <input type="text" class="form-control" id="path-local" name="path" required placeholder="C:\Projects\my-project">
-                                    <button class="btn btn-outline-secondary" type="button" onclick="browseFolder('path-local')">
+                                    <!-- Native File Picker trigger -->
+                                    <label class="btn btn-outline-secondary" for="picker-local">
                                         <i class="fas fa-folder-open"></i> Browse
-                                    </button>
+                                    </label>
+                                    <input type="file" id="picker-local" webkitdirectory directory style="display: none;" onchange="handleFolderSelect(this, 'path-local')">
                                 </div>
                                 <div class="form-text">Select the folder containing .git</div>
                             </div>
@@ -60,9 +62,11 @@
                                 <label class="form-label">Destination Folder</label>
                                 <div class="input-group">
                                     <input type="text" class="form-control" id="path-clone" name="path" required placeholder="C:\Projects\new-folder">
-                                    <button class="btn btn-outline-secondary" type="button" onclick="browseFolder('path-clone')">
+                                    <!-- Native File Picker trigger -->
+                                    <label class="btn btn-outline-secondary" for="picker-clone">
                                         <i class="fas fa-folder-open"></i> Browse
-                                    </button>
+                                    </label>
+                                    <input type="file" id="picker-clone" webkitdirectory directory style="display: none;" onchange="handleFolderSelect(this, 'path-clone')">
                                 </div>
                                 <div class="form-text">Select where the new folder will be created.</div>
                             </div>
@@ -79,29 +83,24 @@
 </div>
 
 <script>
-    async function browseFolder(inputId) {
-        const btn = document.querySelector(`button[onclick="browseFolder('${inputId}')"]`);
-        const icon = btn.querySelector('i');
-        
-        // Loading state
-        const originalIcon = icon.className;
-        icon.className = 'fas fa-spinner fa-spin';
-        btn.disabled = true;
-
-        try {
-            const response = await fetch('/api/browse');
-            const data = await response.json();
+    function handleFolderSelect(input, targetId) {
+        if (input.files && input.files.length > 0) {
+            // Attempt to get path (Standard browsers block absolute path)
+            // This is just a helper. If it returns fakepath, user must edit.
+            const file = input.files[0];
+            const targetInput = document.getElementById(targetId);
             
-            if (data.path) {
-                document.getElementById(inputId).value = data.path;
+            // Try to extract useful info (mostly works in older envs or electron)
+            // In modern Chrome: file.path is undefined, input.value is C:\fakepath\]...
+            
+            // We can't get the absolute path securely in browser.
+            // We prompt the user to paste it if we detect fakepath.
+            if (input.value.includes('fakepath')) {
+                alert("Browser security hides the full path (C:\\...). Please copy the address from the folder window and paste it here.");
+                targetInput.focus();
+            } else {
+                 targetInput.value = input.value;
             }
-        } catch (error) {
-            console.error('Error opening dialog:', error);
-            alert('Could not open folder dialog.');
-        } finally {
-            // Restore state
-            icon.className = originalIcon;
-            btn.disabled = false;
         }
     }
 </script>

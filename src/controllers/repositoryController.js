@@ -2,33 +2,6 @@ const { Repository, ScheduledTask } = require('../models');
 const simpleGit = require('simple-git');
 const fs = require('fs');
 
-const { spawn } = require('child_process');
-
-exports.browseFolder = (req, res) => {
-    // PowerShell command to open Folder Browser Dialog
-    const psCommand = `
-        Add-Type -AssemblyName System.Windows.Forms
-        $f = New-Object System.Windows.Forms.FolderBrowserDialog
-        $f.ShowDialog() | Out-Null
-        $f.SelectedPath
-    `;
-
-    const child = spawn('powershell.exe', ['-Command', psCommand]);
-    let path = '';
-
-    child.stdout.on('data', (data) => {
-        path += data.toString().trim();
-    });
-
-    child.on('close', (code) => {
-        if (path) {
-            res.json({ path });
-        } else {
-            res.json({ cancelled: true });
-        }
-    });
-};
-
 exports.index = async (req, res) => {
     try {
         // Fetch repos including their scheduled tasks
@@ -122,6 +95,11 @@ exports.destroy = async (req, res) => {
 exports.show = async (req, res) => {
     const { id } = req.params;
     const limit = parseInt(req.query.limit) || 10;
+    
+    // Tag Pagination Params
+    const tagPage = parseInt(req.query.tagPage) || 1;
+    const tagLimit = 10;
+    const tagSearch = req.query.tagSearch || '';
 
     try {
         const repo = await Repository.findByPk(id);
@@ -130,7 +108,7 @@ exports.show = async (req, res) => {
         const git = simpleGit(repo.path);
         
         // Parallel execution for speed
-        const [status, log, tags, scheduledTasks, branches] = await Promise.all([
+        const [status, log, tags, scheduledTasks, branches, remoteRefs, unpushedLog] = await Promise.all([
             git.status(),
             git.log({ maxCount: limit }),
             git.tags(),
@@ -138,10 +116,41 @@ exports.show = async (req, res) => {
                 where: { repoId: id, status: 'pending' },
                 order: [['scheduledTime', 'ASC']]
             }),
-            git.branchLocal()
+            git.branchLocal(),
+            git.listRemote(['--tags', 'origin']).catch(e => ''), // Return empty string if offline/error
+            git.log(['--not', '--remotes']) // Get commits that are NOT in any remote
         ]);
 
-        res.render('repo-detail', { repo, status, log, tags, limit, scheduledTasks, branches });
+        // Create a Set of unpushed commit hashes for O(1) lookup
+        const unpushedHashes = new Set(unpushedLog.all.map(c => c.hash));
+
+        // Parse remote tags from "HASH refs/tags/TAGNAME" format
+        const remoteTags = remoteRefs.split('\n')
+            .map(line => {
+                const parts = line.split('refs/tags/');
+                return parts.length > 1 ? parts[1].trim() : null;
+            })
+            .filter(Boolean);
+
+        // Process Tags: Reverse (newest first), Filter, Paginate
+        let allTags = tags.all.slice().reverse();
+        
+        if (tagSearch) {
+            allTags = allTags.filter(t => t.toLowerCase().includes(tagSearch.toLowerCase()));
+        }
+
+        const totalTags = allTags.length;
+        const totalTagPages = Math.ceil(totalTags / tagLimit);
+        const pagedTags = allTags.slice((tagPage - 1) * tagLimit, tagPage * tagLimit);
+
+        res.render('repo-detail', { 
+            repo, status, log, limit, scheduledTasks, branches, remoteTags, unpushedHashes,
+            // Tag Data
+            pagedTags,
+            currentTagPage: tagPage,
+            totalTagPages,
+            tagSearch
+        });
     } catch (error) {
         console.error(error);
         res.status(500).send('Error loading repository details: ' + error.message);

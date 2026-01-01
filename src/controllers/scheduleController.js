@@ -14,6 +14,14 @@ const executeTask = async (taskId) => {
             await git.push();
         } else if (task.type === 'push-tags') {
             await git.pushTags();
+        } else if (task.type === 'push-tag-single') {
+            // Push specific tag: git push origin <tagname>
+            await git.push('origin', task.target);
+        } else if (task.type === 'push-commit') {
+            // Push specific commit to current branch: git push origin <hash>:<current_branch>
+            const branchSummary = await git.branchLocal();
+            const currentBranch = branchSummary.current;
+            await git.push('origin', `${task.target}:${currentBranch}`);
         }
 
         task.status = 'completed';
@@ -72,6 +80,65 @@ exports.schedule = async (req, res) => {
     } catch (error) {
         console.error(error);
         res.status(500).send('Error creating schedule');
+    }
+};
+
+exports.scheduleSingleTag = async (req, res) => {
+    const { id, tagName } = req.params;
+    const { datetime } = req.body;
+
+    try {
+        const scheduledTime = new Date(datetime);
+        
+        if (scheduledTime <= new Date()) {
+            // Simple validation redirect for now
+            return res.redirect(`/repo/${id}?error=Schedule+time+must+be+in+the+future.`);
+        }
+
+        const task = await ScheduledTask.create({
+            repoId: id,
+            type: 'push-tag-single',
+            target: tagName,
+            scheduledTime
+        });
+
+        schedule.scheduleJob(scheduledTime, function() {
+            executeTask(task.id);
+        });
+
+        res.redirect(`/repo/${id}?message=Push+for+tag+${tagName}+scheduled`);
+    } catch (error) {
+        console.error(error);
+        res.redirect(`/repo/${id}?error=Scheduling+Failed:+${encodeURIComponent(error.message)}`);
+    }
+};
+
+exports.scheduleCommit = async (req, res) => {
+    const { id, commitHash } = req.params;
+    const { datetime } = req.body;
+
+    try {
+        const scheduledTime = new Date(datetime);
+        
+        if (scheduledTime <= new Date()) {
+            return res.redirect(`/repo/${id}?error=Schedule+time+must+be+in+the+future.`);
+        }
+
+        const task = await ScheduledTask.create({
+            repoId: id,
+            type: 'push-commit',
+            target: commitHash,
+            scheduledTime
+        });
+
+        schedule.scheduleJob(scheduledTime, function() {
+            executeTask(task.id);
+        });
+
+        res.redirect(`/repo/${id}?message=Push+for+commit+${commitHash.substring(0,7)}+scheduled`);
+    } catch (error) {
+        console.error(error);
+        res.redirect(`/repo/${id}?error=Scheduling+Failed:+${encodeURIComponent(error.message)}`);
     }
 };
 

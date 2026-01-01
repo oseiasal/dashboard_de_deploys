@@ -3,8 +3,6 @@ const router = express.Router();
 const repositoryController = require('../controllers/repositoryController');
 const scheduleController = require('../controllers/scheduleController');
 
-router.get('/api/browse', repositoryController.browseFolder);
-
 router.get('/', repositoryController.index);
 router.get('/add', repositoryController.create);
 router.post('/add', repositoryController.store);
@@ -23,5 +21,7 @@ router.post('/repo/:id/pull-tags', repositoryController.pullTags);
 // Scheduler Routes
 router.get('/repo/:id/schedule', scheduleController.form);
 router.post('/repo/:id/schedule', scheduleController.schedule);
+router.post('/repo/:id/tag/:tagName/schedule', scheduleController.scheduleSingleTag);
+router.post('/repo/:id/commit/:commitHash/schedule', scheduleController.scheduleCommit);
 
 module.exports = router;

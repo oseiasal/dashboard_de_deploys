@@ -7,7 +7,7 @@ ScheduledTask.belongsTo(Repository, { foreignKey: 'repoId' });
 
 const syncDatabase = async () => {
     try {
-        await sequelize.sync({ force: false }); // force: false preserves data
+        await sequelize.sync({ force: false }); // force: false creates if not exists
         console.log('Database synced successfully.');
     } catch (error) {
         console.error('Unable to sync database:', error);
