@@ -21,8 +21,8 @@ router.post('/repo/:id/pull-tags', repositoryController.pullTags);
 // Scheduler Routes
 router.get('/repo/:id/schedule', scheduleController.form);
 router.post('/repo/:id/schedule', scheduleController.schedule);
-router.delete('/repo/:id/schedule/:taskId', scheduleController.cancel);
-router.post('/repo/:id/tag/:tagName/schedule', scheduleController.scheduleSingleTag);
-router.post('/repo/:id/commit/:commitHash/schedule', scheduleController.scheduleCommit);
+router.post('/repo/:id/schedule/cancel/:taskId', scheduleController.cancel); // Changed to POST and updated path
+router.post('/repo/:id/schedule/tag/:tagName', scheduleController.scheduleSingleTag); // Updated path
+router.post('/repo/:id/schedule/commit/:commitHash', scheduleController.scheduleCommit); // Updated path
 
 module.exports = router;

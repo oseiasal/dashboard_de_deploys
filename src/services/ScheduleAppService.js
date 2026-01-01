@@ -35,6 +35,10 @@ class ScheduleAppService {
     async scheduleTask(repoId, type, datetime, target = null) {
         const scheduledTime = new Date(datetime);
         
+        if (isNaN(scheduledTime.getTime())) {
+            throw new Error('Invalid date provided.');
+        }
+
         if (scheduledTime <= new Date()) {
             throw new Error('Schedule time must be in the future.');
         }

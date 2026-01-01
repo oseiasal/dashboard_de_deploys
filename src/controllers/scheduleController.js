@@ -21,12 +21,8 @@ exports.schedule = async (req, res) => {
         res.redirect(`/repo/${id}/schedule?message=Task+Scheduled`);
     } catch (error) {
         console.error(error);
-        if (error.message.includes('future')) {
-            // Re-render logic involves fetching data again, simpler to redirect with error for now or handle better
-            // Ideally we pass error to view. For brevity using redirect pattern or simple error page.
-             return res.redirect(`/repo/${id}/schedule?error=${encodeURIComponent(error.message)}`);
-        }
-        res.status(500).send('Error creating schedule');
+        // Redirect with error message for better UX instead of 500 page
+        return res.redirect(`/repo/${id}/schedule?error=${encodeURIComponent(error.message)}`);
     }
 };
 

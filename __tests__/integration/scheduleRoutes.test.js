@@ -57,20 +57,19 @@ describe('Schedule Routes Integration Tests', () => {
         expect(task.status).toBe('pending');
     });
 
-    test('DELETE /repo/:id/schedule/:taskId should cancel task', async () => {
-        // Create a task manually
-        const futureDate = new Date(Date.now() + 3600000);
+    test('POST /repo/:id/schedule/cancel/:taskId should cancel task', async () => {
+        // Create a task to cancel
         const task = await ScheduledTask.create({
             repoId: repo.id,
-            type: 'push-tags',
-            scheduledTime: futureDate
+            type: 'push',
+            scheduledTime: new Date(Date.now() + 10000)
         });
 
         const response = await request(app)
-            .delete(`/repo/${repo.id}/schedule/${task.id}`);
+            .post(`/repo/${repo.id}/schedule/cancel/${task.id}`); // Changed to POST and updated path
 
         expect(response.status).toBe(302);
-
+        
         // Verify it is gone
         const deletedTask = await ScheduledTask.findByPk(task.id);
         expect(deletedTask).toBeNull();
