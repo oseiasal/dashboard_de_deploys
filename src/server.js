@@ -2,7 +2,7 @@ const app = require('./app');
 const { syncDatabase } = require('./models');
 const scheduleController = require('./controllers/scheduleController');
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 4001;
 
 // Sync DB and Start Server
 syncDatabase().then(() => {
